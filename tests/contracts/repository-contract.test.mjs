@@ -23,6 +23,16 @@ test("dependency policy covers the Spark static portal boundary", () => {
   assert.doesNotMatch(policy, /server runtime|service account|workload identity/i);
 });
 
+test("dependency lock includes the Linux Rolldown binding used by Pages", () => {
+  const lock = JSON.parse(read("package-lock.json"));
+  const rolldown = lock.packages["node_modules/rolldown"];
+  const linuxBinding = lock.packages["node_modules/@rolldown/binding-linux-x64-gnu"];
+  assert.ok(rolldown, "rolldown must be present in package-lock.json");
+  assert.ok(linuxBinding, "Linux Pages runner binding must be present in package-lock.json");
+  assert.equal(linuxBinding.version, rolldown.version);
+  assert.equal(linuxBinding.optional, true);
+});
+
 test("Firestore Rules use exact tool/action boundaries and UTF-8 stack limits", () => {
   const rules = read("firestore.rules");
   assert.match(rules, /function escapedToolKey\(toolKey\)/);
