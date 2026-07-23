@@ -16,7 +16,7 @@ function createPagesArtifacts(): Plugin {
   return {
     name: "create-pages-artifacts",
     apply: "build",
-    async closeBundle() {
+    async writeBundle() {
       const outputDirectory = path.join(webRoot, "dist");
       await copyFile(
         path.join(outputDirectory, "index.html"),

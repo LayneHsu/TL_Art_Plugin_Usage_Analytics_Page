@@ -118,6 +118,8 @@ test("repository scaffold exposes only the Spark web workspace", () => {
   const viteConfig = readText("web/vite.config.ts");
   assert.match(viteConfig, /PORTAL_PUBLIC_BASE_PATH/);
   assert.match(viteConfig, /404\.html/);
+  assert.match(viteConfig, /async writeBundle\(\)/);
+  assert.doesNotMatch(viteConfig, /async closeBundle\(\)/);
 
   for (const environment of ["production", "test", "emulator"]) {
     const text = readText(`config/environments/.env.${environment}.example`);
