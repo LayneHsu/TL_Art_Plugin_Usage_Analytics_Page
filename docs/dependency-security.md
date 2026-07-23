@@ -11,5 +11,6 @@ Dependency controls:
 - Browser code receives only public Firebase Web configuration.
 - Firestore Rules and their emulator tests are part of every production authorization review.
 - Dependency changes require a fresh lockfile audit and focused build/test run.
+- GitHub Pages builds on `ubuntu-latest`, so the lockfile explicitly retains the Linux x64 glibc optional bindings for Rolldown and Lightning CSS. These are build-only packages and are not shipped to the browser or ImportTool plugin.
 
 Review audit findings before deployment, when an upstream fix becomes available, or when adding a new browser/runtime dependency. High or critical findings block release unless the maintainers record a narrowly scoped exception with an owner and expiry date.

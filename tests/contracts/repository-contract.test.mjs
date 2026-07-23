@@ -33,6 +33,16 @@ test("dependency lock includes the Linux Rolldown binding used by Pages", () => 
   assert.equal(linuxBinding.optional, true);
 });
 
+test("dependency lock includes the Linux Lightning CSS binding used by Pages", () => {
+  const lock = JSON.parse(read("package-lock.json"));
+  const lightningcss = lock.packages["node_modules/lightningcss"];
+  const linuxBinding = lock.packages["node_modules/lightningcss-linux-x64-gnu"];
+  assert.ok(lightningcss, "lightningcss must be present in package-lock.json");
+  assert.ok(linuxBinding, "Linux CSS minifier binding must be present in package-lock.json");
+  assert.equal(linuxBinding.version, "1.33.0");
+  assert.equal(linuxBinding.optional, true);
+});
+
 test("Firestore Rules use exact tool/action boundaries and UTF-8 stack limits", () => {
   const rules = read("firestore.rules");
   assert.match(rules, /function escapedToolKey\(toolKey\)/);
