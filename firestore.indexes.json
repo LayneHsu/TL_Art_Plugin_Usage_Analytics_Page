@@ -1,354 +1,44 @@
 {
   "indexes": [
     {
-      "collectionGroup": "usageEvents",
+      "collectionGroup": "usageDaily",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "time_correction.corrected_observed_at", "order": "ASCENDING" },
-        { "fieldPath": "server_received_at", "order": "ASCENDING" },
-        { "fieldPath": "event_id", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageReplayValidationGroups",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "replay_id", "order": "ASCENDING" },
-        { "fieldPath": "kind", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageReplayValidationGroups",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "updated_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageAggregateSourceRevisions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "updated_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "toolUsageDaily",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "generation", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "toolUsageDaily",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "generation", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "principalUsageDaily",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "generation", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "principalUsageDaily",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "generation", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "errorAggregates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "generation", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "errorAggregates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "generation", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "portalUsers",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "role", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "portalUsers",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "search_terms", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "server_received_at", "order": "ASCENDING" },
-        { "fieldPath": "event_id", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "server_received_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
+        { "fieldPath": "company_date", "order": "ASCENDING" },
+        { "fieldPath": "uid", "order": "ASCENDING" },
         { "fieldPath": "tool_key", "order": "ASCENDING" },
-        { "fieldPath": "action_key", "order": "ASCENDING" },
-        { "fieldPath": "server_received_at", "order": "DESCENDING" }
+        { "fieldPath": "last_occurred_at", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "usageEvents",
+      "collectionGroup": "errorLogs",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "plugin_principal_id", "order": "ASCENDING" },
-        { "fieldPath": "server_received_at", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "event_type", "order": "ASCENDING" },
-        { "fieldPath": "server_received_at", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "toolUsageDaily",
-      "queryScope": "COLLECTION",
-      "fields": [
+        { "fieldPath": "company_date", "order": "ASCENDING" },
+        { "fieldPath": "uid", "order": "ASCENDING" },
         { "fieldPath": "tool_key", "order": "ASCENDING" },
-        { "fieldPath": "action_key", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
+        { "fieldPath": "occurred_at", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "principalUsageDaily",
+      "collectionGroup": "errorLogs",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "plugin_principal_id", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "errorAggregates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "fingerprint", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "errorAggregates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "errorAggregates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "tool_key", "order": "ASCENDING" },
-        { "fieldPath": "action_key", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "deadLetters",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "server_received_at", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "deadLetters",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "server_received_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "pluginAuthAudit",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "occurredAt", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "toolUsageDaily",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "principalUsageDaily",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "errorAggregates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "pluginDevicePairings",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "expires_at", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageQuotas",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "expires_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageOperations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "pending_terminal", "order": "ASCENDING" },
-        { "fieldPath": "updated_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageReplayApprovals",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "expires_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageReplayJobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "updated_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageRetentionRuns",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "updated_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageMonitoringCounters",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "expires_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageMonitoringCounters",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "bucket_start", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageMonitoringSnapshots",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "recorded_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageMonitoringNotifications",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "created_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "errorAggregates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "generation", "order": "ASCENDING" },
-        { "fieldPath": "plugin_version", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "error.fingerprint", "order": "ASCENDING" },
-        { "fieldPath": "tool_key", "order": "ASCENDING" },
-        { "fieldPath": "action_key", "order": "ASCENDING" },
-        { "fieldPath": "time_correction.corrected_observed_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "usageEvents",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "error.fingerprint", "order": "ASCENDING" },
-        { "fieldPath": "tool_key", "order": "ASCENDING" },
-        { "fieldPath": "action_key", "order": "ASCENDING" },
-        { "fieldPath": "plugin_version", "order": "ASCENDING" },
-        { "fieldPath": "time_correction.corrected_observed_at", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
+        { "fieldPath": "error_type", "order": "ASCENDING" },
+        { "fieldPath": "occurred_at", "order": "DESCENDING" }
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "usageDaily",
+      "fieldPath": "events",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "errorLogs",
+      "fieldPath": "stack",
+      "indexes": []
+    }
+  ]
 }

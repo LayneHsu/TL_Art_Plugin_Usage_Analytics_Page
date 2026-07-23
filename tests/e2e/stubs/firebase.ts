@@ -1,48 +1,53 @@
-type PortalRole = "visitor" | "admin";
-type PortalStatus = "active" | "disabled" | "removed";
-type StubUser = { uid: string; getIdToken: () => Promise<string> };
-type Access = { role: PortalRole; status: PortalStatus };
+import type { PortalMember, PortalRole } from "../../../web/src/portal/api";
+
+type StubUser = {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL: null;
+};
 
 const query = new URLSearchParams(window.location.search);
 const state = {
-  role: query.get("role") === "visitor" ? "visitor" as PortalRole : "admin" as PortalRole,
-  status: "active" as PortalStatus,
+  role: query.get("role") === "viewer" ? "viewer" as PortalRole : "admin" as PortalRole,
+  enabled: query.get("enabled") !== "false",
   signedIn: query.get("signedIn") !== "false",
-  deferPreview: false,
-  previewResolver: undefined as (() => void) | undefined,
-  errorDetailRequests: [] as Array<Record<string, unknown>>,
-  roleChangeFunction: query.get("roleChangeOn"),
-  roleChangeConsumed: false,
 };
-const user: StubUser = { uid: "portal-e2e-user", getIdToken: async () => "portal-e2e-token" };
+const user: StubUser = { uid: "portal-e2e-user", email: "admin@xindong.com", displayName: "测试管理员", photoURL: null };
 const authListeners = new Set<(value: StubUser | null) => void>();
-const accessListeners = new Set<(value: Access | null) => void>();
+const memberListeners = new Set<(value: PortalMember | null) => void>();
+
+function member(): PortalMember {
+  return {
+    email: user.email,
+    role: state.role,
+    enabled: state.enabled,
+    created_at: "2026-07-01T00:00:00.000Z",
+    created_by: user.uid,
+    updated_at: "2026-07-23T08:00:00.000Z",
+    updated_by: user.uid,
+  };
+}
 
 function emitAuth(): void {
-  const value = state.signedIn ? user : null;
-  for (const listener of authListeners) listener(value);
+  for (const listener of authListeners) listener(state.signedIn ? user : null);
 }
 
-function emitAccess(): void {
-  const value = state.signedIn ? { role: state.role, status: state.status } : null;
-  for (const listener of accessListeners) listener(value);
+function emitMember(): void {
+  for (const listener of memberListeners) listener(state.signedIn ? member() : null);
 }
 
-(window as typeof window & { __portalE2E: typeof state & { setAccess: (role: PortalRole, status: PortalStatus) => void; resolvePreview: () => void } }).__portalE2E = Object.assign(state, {
-  setAccess(role: PortalRole, status: PortalStatus) {
+(window as typeof window & { __portalE2E: typeof state & { setMember: (role: PortalRole, enabled: boolean) => void } }).__portalE2E = Object.assign(state, {
+  setMember(role: PortalRole, enabled: boolean) {
     state.role = role;
-    state.status = status;
-    emitAccess();
-  },
-  resolvePreview() {
-    state.previewResolver?.();
-    state.previewResolver = undefined;
+    state.enabled = enabled;
+    emitMember();
   },
 });
 
 export async function signInPortal(): Promise<void> {
   state.signedIn = true;
-  state.status = "active";
+  state.enabled = true;
   emitAuth();
 }
 
@@ -57,8 +62,19 @@ export function watchPortalUser(callback: (value: StubUser | null) => void): () 
   return () => authListeners.delete(callback);
 }
 
-export function watchPortalAccess(_user: StubUser, callback: (value: Access | null) => void): () => void {
-  accessListeners.add(callback);
-  queueMicrotask(() => callback({ role: state.role, status: state.status }));
-  return () => accessListeners.delete(callback);
+export function watchPortalMember(_user: StubUser, callback: (value: PortalMember | null) => void): () => void {
+  memberListeners.add(callback);
+  queueMicrotask(() => callback(member()));
+  return () => memberListeners.delete(callback);
 }
+
+export function normalizedEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+export function isPortalEmail(value: string): boolean {
+  const email = normalizedEmail(value);
+  return email.endsWith("@xindong.com") || email === "snkhtm@gmail.com";
+}
+
+export const portalFirestore = {};

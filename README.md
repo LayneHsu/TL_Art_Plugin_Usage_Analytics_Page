@@ -25,7 +25,7 @@ npm run build:web
 npm run test:pages-artifacts
 ```
 
-Firestore Rules tests also require Java 21:
+Firestore Rules tests require Java 21 or newer; JDK 25 LTS is the currently verified runtime:
 
 ```powershell
 npm run test:rules
@@ -47,9 +47,9 @@ The Pages build accepts only public Firebase Web identifiers, the Pages origin, 
 ## External setup
 
 1. Create a dedicated Firebase project on the Spark plan.
-2. Enable Google sign-in and register the Pages hostname as an authorized domain.
+2. Enable Google sign-in and register the Pages hostname as an authorized domain. The initial portal administrator is the explicitly allowlisted `snkhtm@gmail.com`; plugin data writes still require verified `@xindong.com` accounts.
 3. Create the Firestore database, then publish the reviewed Rules and Indexes.
 4. Add the public `PORTAL_FIREBASE_*`, Pages origin, and authorized-domain values to the GitHub `github-pages` environment.
 5. After the Spark Firestore Rules/data contract has been deployed, create the first `portalMembers` administrator document before exposing the portal. During the intermediate scaffold migration, the old portal collections are not a supported production setup.
 
-The detailed data model, Rules, portal queries, and operator runbook are completed in later implementation tasks and remain protected by their own contracts.
+The detailed data model, Rules, portal queries, and operator runbook are checked in under `contracts/`, `firestore.rules`, and `docs/`. The emulator test is the authoritative permission check; a local run requires Java 21 or newer.

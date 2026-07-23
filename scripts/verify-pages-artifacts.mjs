@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-const defaultBasePath = "/TL_Art_Tool_Usage_Analytics/";
+const defaultBasePath = "/TL_Art_Plugin_Usage_Analytics_Page/";
 const pagesOrigin = "https://pages.invalid";
 
 function normalizeBasePath(value) {

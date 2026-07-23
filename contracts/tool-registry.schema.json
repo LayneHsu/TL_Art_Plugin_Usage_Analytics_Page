@@ -7,14 +7,12 @@
   "required": [
     "schema_version",
     "registry_version",
-    "registry_status",
     "tools"
   ],
   "properties": {
     "$schema": { "const": "./tool-registry.schema.json" },
     "schema_version": { "$ref": "#/$defs/semanticVersion" },
     "registry_version": { "$ref": "#/$defs/semanticVersion" },
-    "registry_status": { "enum": ["draft", "active"] },
     "tools": {
       "type": "array",
       "items": { "$ref": "#/$defs/tool" }

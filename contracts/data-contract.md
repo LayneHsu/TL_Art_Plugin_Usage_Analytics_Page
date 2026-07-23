@@ -1,81 +1,47 @@
-# Usage data contract
+# Spark 数据合同
 
-This repository is authoritative for the usage event schema and tool registry. Producers must send a client event that validates against `usage-event-schema.json`. The ingestion service validates it again, resolves the plugin identity, and adds only the server-owned stored-event fields.
+本仓库定义 ImportTool 统计采集器和统计网页共用的 Firestore 数据形状。生产环境只有 Firebase Authentication、Cloud Firestore 和 GitHub Pages，没有 Functions、服务账号或可信写入服务。Firestore Rules 是在线权限边界，客户端必须同时遵守本合同和规则。
 
-## Event lifecycle
+## 共同约束
 
-The fixed categories are `entry_clicked`, `dialog_opened`, `dialog_open_failed`, `run_rejected`, `run_started`, `run_succeeded`, `run_failed`, `run_cancelled`, `run_interrupted`, and `unexpected_exception`.
+- 公司报表日期使用 `Asia/Shanghai`，格式为 `YYYY-MM-DD`。
+- 插件写入账号必须是已验证的 `@xindong.com` 邮箱；统计网页门户另外允许已验证的首位管理员 `snkhtm@gmail.com`，两者认证边界不互相放宽。
+- 所有写入都带当前 Firebase UID；插件只能写自己的 UID，统计网页普通账号不能写统计数据。
+- 工具和动作 key 必须存在于 `contracts/tool-registry.json`，不能用显示名称代替稳定 key。
+- 事件 ID 在一次操作重试期间保持不变。上传失败重试不得修改事件内容。
+- 每个 `usageDaily` 文档最多保存 500 个事件，每个事件 JSON UTF-8 硬上限为 1536 字节，整个分片 JSON 上限为 896 KiB；分片固定为 `00` 至 `31`。该组合按最大事件数给 Firestore 1 MiB 文档上限保留至少 128 KiB 编码余量。
+- 失败事件引用同一个 `errorLogs` 文档。错误日志以事件 ID 为文档 ID，重复上传必须幂等。
 
-Only `run_started` increments a usage count. Entry clicks and dialog opens describe navigation, not successful or attempted usage. Every event carries an `operation_id`; a run terminal event (`run_succeeded`, `run_failed`, `run_cancelled`, or `run_interrupted`) is correlated with its `run_started` event by that ID. Consumers must tolerate a missing terminal event and must not infer success from `run_started`.
+## 集合
 
-The client owns observation and version fields. The service derives `plugin_principal_id` from authenticated plugin credentials and adds `server_received_at` plus the bounded `time_correction` record. A portal Firebase UID is never an event identity and is rejected as an extra event field.
+### `pluginUsers/{uid}`
 
-Terminal run events may include `duration_ms`, an integer from 0 through 604800000 (7 days). Nonterminal events must not include it.
+插件登录后写入自己的资料快照。字段为 `uid`、`email`、`display_name`、`avatar_url`、`last_login_at`、`last_active_at`、`plugin_version` 和 `updated_at`。`uid` 必须等于文档 ID 和当前认证 UID；`email` 必须等于已验证的公司认证邮箱。姓名和头像仅用于网页展示，不复制到事件中。
 
-## Time correction and daily buckets
+插件用户可以创建或更新自己的资料，不能修改其他 UID、成员权限或统计数据。网页成员可以读取资料用于统计筛选，但不能通过普通插件账号读取全局资料。
 
-The company reporting timezone is `Asia/Shanghai` (`UTC+8`, no DST). Client observations more than 30 days behind or 24 hours ahead of `server_received_at` receive permanent rejection. Within that hard range, observations more than 10 minutes ahead or 7 days behind are corrected to `server_received_at`. The stored `clock_offset_ms` is `server_received_at - client_observed_at`. An offset from -600000 through 604800000 is `within_tolerance` with `applied=false`; an offset from -86400000 through -600001 is `client_clock_ahead` with `applied=true`; an offset from 604800001 through 2592000000 is `client_clock_behind` with `applied=true`. Ingestion computes and verifies `corrected_observed_at`: it equals `client_observed_at` when correction is not applied and `server_received_at` when correction is applied. JSON Schema cannot compare these sibling timestamp fields, so ingestion must enforce that equality before storage. `invalid_client_time` is not a stored reason because `client_observed_at` is schema-valid and observations outside the hard range are rejected. Aggregation uses `corrected_observed_at` to assign the `Asia/Shanghai` daily bucket.
+### `usageDaily/{company_date}_{uid}_{tool_key}_{shard}`
 
-## Operation recovery
+每天、每个 UID、每个工具建立 32 个固定分片。使用事件 ID 的稳定哈希选择分片，文档 ID 的日期、UID、工具 key、两位分片号必须与字段 `company_date`、`uid`、`tool_key`、`shard` 一致。
 
-On startup, recovery emits `run_interrupted` only for a stable persisted `operation_id` that has no terminal event. This startup recovery is idempotent on `(operation_id, run_interrupted)`. An `abandoned` run is one with no terminal event after 24 hours; it is a derived display state and does not mutate the source event type. A later run_interrupted event supersedes the abandoned display state.
+字段为 `company_date`、`uid`、`tool_key`、`shard`、`events`、`first_occurred_at`、`last_occurred_at`、`last_result`、`plugin_version` 和 `updated_at`。`events` 是逐次事件数组，事件至少包含 `event_id`、`operation_id`、`tool_key`、`action_key`、`event_type`、`occurred_at`、`result` 和 `plugin_version`；事件内 `tool_key` 必须与分片文档 `tool_key` 相同，`action_key` 必须属于该工具。终态事件另有 `duration_ms`。失败事件可带 `error_log_id` 和脱敏 `error_summary`。
 
-When a terminal event arrives before its matching `run_started`, ingestion stores it only as `usageOperations.pending_terminal` and creates an Admin SDK-only `usageEventReservations` document keyed by `event_id`. The reservation prevents any other payload or principal from claiming that global event ID. The matching start transaction validates the reservation, commits both raw events and their aggregates, and deletes the reservation atomically. A pending operation and its reservation are not ordinary expired operation metadata.
+同一事件 ID 的重试必须落在同一分片。客户端在提交前去重，网页读取时再次按事件 ID 去重；网页不能把 `run_started` 以外的事件重复计为工具使用次数。Rules 限制数组长度、文档归属和不可变维度，并用 `hasAll` 防止已有事件被替换或删除；新建分片只做首事件的最小形状校验，更新允许任意批量追加。Rules 不遍历事件数组或中央注册表来判断每个新事件的字段和 key 归属；完整事件字段、`event.tool_key` 与文档工具的一致性、`action_key` 前缀和注册表存在性由共享 JSON Schema、注册表合同及插件校验拒绝。
 
-## Registry readiness gate
+### `errorLogs/{event_id}`
 
-`registry_status` is either `draft` or `active`. When it is `draft`, production ingestion is disabled. Task 7 must populate the verified tool/action inventory and change the registry to `active` before any production ingestion or deployment is allowed.
+错误日志保存 `uid`、`company_date`、`tool_key`、`action_key`、`occurred_at`、`error_type`、`summary`、`call_site`、`fingerprint`、`stack` 和 `plugin_version`。文档 ID 必须等于事件 ID。`stack` 按 UTF-8 字节限制为 8 KiB，可以保留 `Traceback` 等已脱敏结构标识，但不得包含 token、密码、凭据、请求/响应正文、邮箱、JWT、UNC 路径或用户绝对目录。完整错误只供授权统计网页读取，普通插件用户不能查询。
 
-## Collections
+### `portalMembers/{normalized_email}`
 
-| Collection | Purpose | Browser access |
-| --- | --- | --- |
-| `portalUsers` | Portal profile, role, active/disabled state, and server-maintained normalized search prefixes | Self get only |
-| `portalAccessPolicies` | Versioned HMAC pre-authorization policy records | None |
-| `portalBootstrapState` | Once-consumed first-administrator bootstrap marker without email data | None |
-| `portalAuthAudit` | Portal authentication audit | None |
-| `pluginPrincipals` | Immutable plugin principal identity and mutable profile snapshot | None |
-| `pluginDeviceBindings` | Principal-to-device binding and revocation state | None |
-| `pluginDevicePairings` | Short-lived pairing workflow | None |
-| `pluginAuthAudit` | Plugin authentication audit | None |
-| `pluginOpsReviews` | Immutable plugin-auth operations request and two-person approval state | None |
-| `usageEvents` | Validated stored events | None |
-| `toolUsageDaily` | Principal-dimensional daily tool usage aggregates | None |
-| `principalUsageDaily` | Principal-level daily aggregates | None |
-| `errorAggregates` | Team-level redacted error aggregates | None |
-| `deadLetters` | Rejected ingestion records with bounded diagnostics | None |
-| `usageQuotas` | Expiring distributed ingestion quota buckets | None |
-| `usageOperations` | Run correlation and bounded terminal-first recovery state | None |
-| `usageEventReservations` | Global event-ID ownership while a terminal-first operation awaits its start | None |
-| `usageReplayApprovals` | Immutable IAM replay request, separate approval, and one-shot execution state | None |
-| `usageReplayJobs` | Persisted replay definition, tuple checkpoint, catch-up fence, validation totals, and cutover state | None |
-| `usageReplayLocks` | Expiring single-worker replay lease | None |
-| `usageReplayGenerations` | Immutable claim binding a shadow generation to one replay ID | None |
-| `usageReplayAppliedEvents` | Idempotency marker for applying a raw event to a shadow generation | None |
-| `usageReplayValidationGroups` | Replay-scoped expected daily, principal, and error groups used by resumable validation | None |
-| `usageAggregateSourceRevisions` | Transactional per-company-date source revisions used by replay cutover | None |
-| `usageAggregatePointers` | Active reader generation, date partitions, rollback window, and ingestion source revision | None |
-| `usageRetentionRuns` | Resumable retention cleanup cursor, pinned cutoff, and policy digest | None |
-| `usageRetentionSchedules` | Active scheduled-retention run pointer and short reservation | None |
-| `usageRetentionAudit` | Per-page deletion audit containing only ID hashes and counts | None |
-| `usageMonitoringCounters` | Server-side bounded monitoring counters | None |
-| `usageMonitoringSnapshots` | Evaluated monitoring metrics and threshold snapshots | None |
-| `usageMonitoringAlerts` | Deduplicated active/recovered alert state | None |
-| `usageMonitoringNotifications` | Pending named-route alert notification outbox | None |
-| `portalQueryAudit` | Server-side query/export audit | None |
+统计网页成员以规范化门户邮箱为文档 ID，字段为 `email`、`role`、`enabled`、`created_at`、`created_by`、`updated_at` 和 `updated_by`。门户邮箱只能是 `@xindong.com` 或明确配置的首位管理员 `snkhtm@gmail.com`；`role` 只能是 `admin` 或 `viewer`。首位管理员由 Firebase Console 手动建立，网页不实现 bootstrap。
 
-Admin SDK services are the only writers. Browser clients do not read or write events, aggregates, identity records, management records, replay state, retention state, monitoring state, or audit records. Portal reports, including redacted team error summaries, are returned only by role-aware Functions after current access and minimum-group checks.
+启用的管理员和查看者可以读取四个集合。管理员可维护其他成员；查看者不能写成员。管理员不能通过网页禁用、删除或降级自己的成员文档。
 
-Each `errorAggregates` document represents exactly one company date, tool, action, error category, fingerprint, generation, and `plugin_version`. Its document ID includes that version, and `affected_versions` is the matching one-element compatibility projection. This keeps every aggregate document bounded. Queries without a version filter merge the separate version documents in Functions; queries with a version filter constrain `plugin_version` before merging so counts, timestamps, distinct principals, and safe-summary totals cannot include another version.
+## 身份边界
 
-Maintenance retention is state-aware. The scheduled cleanup may remove only `usageOperations` whose `pending_terminal` is null, only `usageReplayJobs` in `failed` or `finalized` states, and only `usageRetentionRuns` in `completed` state, after their independently configured retention durations. `running`, `switched`, and `rolled_back` replay jobs and running retention runs are never eligible because replay rollback context remains active until finalize. Pending terminal `usageEventReservations`, `usageReplayAppliedEvents`, `usageReplayGenerations`, `usageReplayValidationGroups`, `usageReplayLocks`, `usageAggregatePointers`, `usageRetentionSchedules`, `usageRetentionAudit`, and `usageMonitoringAlerts` require state-aware cleanup, replay-aware purge, bounded-state verification, or explicit scheduler-retirement handling and are not eligible for generic time-based deletion. Production enablement is blocked until an owner records their retention/legal-hold process and age/volume monitoring; no policy may imply that these collections are bounded merely because the generic cleanup is enabled.
+插件账号和统计网页共用 Firebase Authentication 用户池，但入口、会话和授权用途分离。插件账号只能写自己的 `pluginUsers`、`usageDaily` 和 `errorLogs`，不能读取统计；只有启用的 `portalMembers` 才能读取统计。不得使用 portal UID、插件 token、Functions 身份或客户端可修改的角色字段代替 Firebase Auth 身份。当前 Spark 无后端方案不能把身份提供方拆成两个 Firebase 项目；若未来必须做到身份源分离，应先引入受信 custom-token/写入服务再迁移合同。
 
-## Replay and aggregate rebuild
+## 额度和重试
 
-Aggregation is deterministic and keyed by the source `event_id`. A rebuild uses a stable `(corrected_observed_at, server_received_at, event_id)` watermark and a company-time day-aligned half-open `[from, to)` window. Event selection and date partitions use `corrected_observed_at`, so a late upload is rebuilt into its reporting day and an event exactly at the exclusive end belongs only to the next partition. Online aggregation continues while a replay writes to a versioned shadow result. The replay starts before the current watermark, processes the complete permitted rebuild window, and is safe to retry as an idempotent rebuild.
-
-After replay, compare source and shadow status/duration totals plus complete streaming digests for day/tool/action groups, principal groups, error fingerprints, identity fields, and bounded safe-summary counts. `usageReplayValidationGroups` is updated idempotently with each applied marker; `usageReplayJobs.validation_progress` persists the current side, group kind, document cursor, totals, and chained digest. Each invocation processes only the approved page budget, so validation resumes without retaining all groups in memory.
-
-The ingestion transaction reads `usageAggregatePointers/active`, routes an event by its corrected timestamp, writes only the selected generation plus an applicable rollback generation, increments the global source revision, and updates that company date's `usageAggregateSourceRevisions` document in the same commit as the raw event and aggregates. A partial replay captures only its date revision vector, so outside writes do not starve it. Cutover reads the replay job, pointer, lock, and captured date revision documents in one transaction; a conflicting in-window ingestion forces a catch-up pass before the pointer can switch. A run payload must explicitly choose `partition` or `global`; scope is never inferred from retained raw events. A partition keeps historical aggregate ranges outside the window on their existing generation. A later replay of the exact same range replaces that partition and keeps its previous generation as the rollback target; partially overlapping ranges are rejected. `rollback` restores the previous reader, while separately approved `finalize` closes the rollback window, clears obsolete rollback routing, and prevents indefinite dual writes. An explicitly global rebuild clears date partitions after validating the complete declared source range and is the compaction path for long-lived partition routing. A generation claim cannot be reused by another replay ID. Raw event retention must cover the full rebuild window and its late-arrival allowance.
-
-Queries must use the declared indexes and bounded date ranges. Services and portal clients must not implement full collection scans.
+Spark 的 Firestore 免费写入额度按每天 20,000 次估算；一次完整工具操作至少包含 `run_started` 和一个终态，通常需要两次 `usageDaily` 写入，失败操作还可能额外写一次 `errorLogs`。因此网页显示每天 5,000 次工具操作的安全工作线，预留账号资料、成员变更、错误日志和重试的空间；它是提醒线，不是服务端硬限制。网页默认查询最近 30 天并按日期、用户和工具限制结果。网络失败只保留本地 JSONL 队列并重试，不改变事件 ID 或统计次数。

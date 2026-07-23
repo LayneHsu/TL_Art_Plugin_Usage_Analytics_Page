@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
     "PORTAL_",
   );
   const defaultBasePath =
-    mode === "production" ? "/TL_Art_Tool_Usage_Analytics/" : "/";
+    mode === "production" ? "/TL_Art_Plugin_Usage_Analytics_Page/" : "/";
 
   return {
     base: normalizeBasePath(

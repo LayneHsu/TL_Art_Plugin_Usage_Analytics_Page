@@ -10,7 +10,7 @@ The analytics project is a static GitHub Pages site backed directly by Firebase 
 4. Add the GitHub Pages hostname to Authentication authorized domains.
 5. Create a Web app and copy its public configuration into the Pages environment.
 6. Create Cloud Firestore in production mode and deploy `firestore.rules` and `firestore.indexes.json` with the Firebase CLI.
-7. Create the first `portalMembers` document manually with the owner email and `role: "admin"`; later member changes happen from the admin page.
+7. Create the first `portalMembers` document manually with `snkhtm@gmail.com` as the document ID and `email`, `role: "admin"`, `enabled: true`; later member changes happen from the admin page. Plugin data writes remain restricted to verified `@xindong.com` accounts.
 
 ## GitHub Pages
 
@@ -41,10 +41,11 @@ npm run test:rules
 ```
 
 For local permission checks, start the Auth and Firestore emulators with a `demo-` project ID and run `npm run test:rules`. No production credentials are needed for emulator tests.
+The Firebase Emulator requires Java 21 or newer; this repository's permission matrix is verified with JDK 25 LTS.
 
 ## Spark operating limits
 
-The design budget is 20,000 Firestore writes, 50,000 reads, and 20,000 deletes per day, with 1 GiB stored data and 10 GiB monthly egress. The operational warning line is 15,000 tool operations per day. A failed operation can also create an error document, so the page reports both event count and estimated writes. Administrators should export before manually deleting old daily buckets and error documents in controlled batches.
+The design budget is 20,000 Firestore writes, 50,000 reads, and 20,000 deletes per day, with 1 GiB stored data and 10 GiB monthly egress. A complete tool operation normally writes both `run_started` and one terminal event, while failed operations can also create an error document. The portal therefore uses 5,000 tool operations per day as an operational warning line, leaving room for account/profile writes, membership changes, retries, and error logs; it is not a server-side hard cap. Administrators should export before manually deleting old daily buckets and error documents in controlled batches.
 
 ## Rollback
 

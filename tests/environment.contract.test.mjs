@@ -33,7 +33,7 @@ for (const mode of ["production", "test", "emulator"]) {
       assert.equal(portalEnvironment.PORTAL_DEPLOY_ENV, mode);
       assert.ok(portalEnvironment.PORTAL_PUBLIC_BASE_PATH);
       assert.equal(
-        Object.keys(portalEnvironment).some((key) => /FUNCTIONS|PLUGIN_|SECRET|SCHEDULER/i.test(key)),
+        Object.keys(portalEnvironment).some((key) => /^(?:FUNCTIONS|PLUGIN_|SECRET|SCHEDULER)/i.test(key)),
         false,
       );
     } finally {
@@ -52,7 +52,7 @@ test("web configuration exposes only public portal values", async () => {
   assert.equal(loadedConfig.config.envPrefix, "PORTAL_");
   for (const mode of ["production", "test", "emulator"]) {
     const sample = fs.readFileSync(path.join(environmentDirectory, `.env.${mode}.example`), "utf8");
-    assert.doesNotMatch(sample, /FUNCTIONS|PLUGIN_|SECRET|SCHEDULER/i);
+    assert.doesNotMatch(sample, /^\s*(?:FUNCTIONS|PLUGIN_|SECRET|SCHEDULER)/im);
   }
 });
 

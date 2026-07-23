@@ -19,13 +19,11 @@ test("browser gate covers authorization, revocation, races, responsiveness and a
   const e2e = read("tests/e2e/portal.spec.ts");
   const workflow = read(".github/workflows/verify.yml");
   for (const phrase of [
-    "visitor cannot open admin routes",
-    "admin can open protected routes",
-    "role and status changes revoke access",
-    "late preview responses are ignored",
-    "mobile keeps the account role visible",
-    "tables scroll horizontally",
-    "keyboard focus is visible",
+    "viewer cannot open admin routes",
+    "admin can inspect users, tools, events, errors and cleanup",
+    "role and status changes clear protected data",
+    "event aggregation deduplicates shards and joins terminal results",
+    "mobile keeps account role visible and tables scroll",
   ]) assert.match(e2e, new RegExp(phrase));
   assert.match(e2e, /AxeBuilder/);
   assert.match(e2e, /pageerror/);

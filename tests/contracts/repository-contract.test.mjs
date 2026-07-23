@@ -23,6 +23,20 @@ test("dependency policy covers the Spark static portal boundary", () => {
   assert.doesNotMatch(policy, /server runtime|service account|workload identity/i);
 });
 
+test("Firestore Rules use exact tool/action boundaries and UTF-8 stack limits", () => {
+  const rules = read("firestore.rules");
+  assert.match(rules, /function escapedToolKey\(toolKey\)/);
+  assert.match(rules, /escapedToolKey\(documentToolKey\)/);
+  assert.match(rules, /escapedToolKey\(request\.resource\.data\.tool_key\)/);
+  assert.match(rules, /request\.resource\.data\.stack\.toUtf8\(\)\.size\(\) <= 8192/);
+  assert.doesNotMatch(rules, /request\.resource\.data\.stack\.size\(\) <= 8192/);
+});
+
+test("Firestore Rules reserve analytics cleanup for active admins", () => {
+  const rules = read("firestore.rules");
+  assert.ok((rules.match(/allow delete: if activeAdmin\(\);/g) ?? []).length >= 2);
+});
+
 test("retired enterprise contracts, operations, and tests are absent", () => {
   for (const relativePath of [
     "contracts/auth-domain-boundaries.md",

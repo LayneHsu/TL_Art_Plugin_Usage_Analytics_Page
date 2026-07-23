@@ -8,6 +8,17 @@
 
 **Tech Stack:** UE4.26 Python、PySide2、Python 标准库 HTTP/JSON/PKCE、Windows Credential Manager、Firebase Authentication REST API、Cloud Firestore REST API。
 
+### 执行状态（2026-07-23）
+
+详细任务清单中的未勾选项保留为历史实施记录；当前结论以本节状态和最后验收项为准。
+
+- [x] 插件侧已完成 Spark 直连改造、UID 隔离队列、逐次事件、错误脱敏、主窗口账号状态和旧 pairing/lease 协议清理。
+- [x] 当前 ImportTool 发布配置已暂时设为 `enabled=false`；关闭路径不加载认证、网络、队列、异常钩子或上传线程，工具直接放行。
+- [x] 插件统计专项测试 87/87、插件全量测试 941/941（跳过 2）、Python 编译检查和 `git diff --check` 已通过。
+- [x] 独立网页的结构/合同/Pages 构建/产物检查和跨仓工具注册表校验已通过。
+- [x] Firestore Rules Emulator 权限矩阵已在 JDK 25 LTS 下通过 10/10。
+- [ ] 真实 Firebase 登录/Firestore 上传、UE Editor 认证和断网恢复探针仍需在补齐 Firebase 配置与目标 UE 环境后执行。
+
 ---
 
 ### Task 1: 固化轻量化回归边界
@@ -164,7 +175,7 @@
 ### Task 10: 双项目集成验收
 
 **Files:**
-- Modify if contract drift is found: `F:/XD_Work/AI_WorkSpace/TL_Art_Tool_Usage_Analytics/contracts/`
+- Modify if contract drift is found: `F:/XD_Work/AI_WorkSpace/TL_Art_Plugin_Usage_Analytics_Page/contracts/`
 - Modify if contract drift is found: `PythonFile/v8_framework/core/usage_analytics/`
 - Modify if contract drift is found: both projects' tests and docs
 

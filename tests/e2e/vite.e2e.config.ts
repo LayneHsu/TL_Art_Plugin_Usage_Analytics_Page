@@ -15,7 +15,7 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: /^\.\/firebase$/, replacement: vitePath(testDirectory, "stubs", "firebase.ts") },
-      { find: /^\.\/api$/, replacement: vitePath(testDirectory, "stubs", "api.ts") },
+      { find: /^\.\/store$/, replacement: vitePath(testDirectory, "stubs", "store.ts") },
     ],
   },
   server: {

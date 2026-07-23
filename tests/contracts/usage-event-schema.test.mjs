@@ -2,470 +2,251 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
+import { pathToFileURL } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
-const testDirectory = path.dirname(fileURLToPath(import.meta.url));
-const repositoryRoot = path.resolve(testDirectory, "..", "..");
-const schemaPath = path.join(repositoryRoot, "contracts", "usage-event-schema.json");
-
-const eventTypes = [
-  "entry_clicked",
-  "dialog_opened",
-  "dialog_open_failed",
-  "run_rejected",
-  "run_started",
-  "run_succeeded",
-  "run_failed",
-  "run_cancelled",
-  "run_interrupted",
-  "unexpected_exception",
-];
+const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 
 function loadValidators() {
-  const schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
+  const schema = JSON.parse(
+    fs.readFileSync(path.join(repositoryRoot, "contracts", "usage-event-schema.json"), "utf8"),
+  );
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   addFormats(ajv);
   ajv.addKeyword({ keyword: "x-event-types" });
   ajv.addKeyword({ keyword: "x-usage-counted-event-type" });
-  ajv.addKeyword({ keyword: "x-time-policy" });
-  ajv.addKeyword({ keyword: "x-operation-recovery-policy" });
+  ajv.addKeyword({ keyword: "x-company-timezone" });
+  ajv.addKeyword({ keyword: "x-shard-count" });
+  ajv.addKeyword({ keyword: "x-max-events-per-shard" });
+  ajv.addKeyword({ keyword: "x-max-event-json-bytes" });
+  ajv.addKeyword({ keyword: "x-max-shard-json-bytes" });
+  ajv.addKeyword({ keyword: "x-max-stack-utf8-bytes" });
+  ajv.addKeyword({
+    keyword: "x-max-utf8-bytes",
+    type: "string",
+    schemaType: "number",
+    validate: (limit, value) => Buffer.byteLength(value, "utf8") <= limit,
+  });
   ajv.addSchema(schema);
   return {
     schema,
-    client: ajv.compile({ $ref: `${schema.$id}#/$defs/clientEvent` }),
-    stored: ajv.compile({ $ref: `${schema.$id}#/$defs/storedEvent` }),
+    event: ajv.compile({ $ref: `${schema.$id}#/$defs/event` }),
+    dailyShard: ajv.compile({ $ref: `${schema.$id}#/$defs/dailyShard` }),
+    errorLog: ajv.compile({ $ref: `${schema.$id}#/$defs/errorLog` }),
+    pluginUser: ajv.compile({ $ref: `${schema.$id}#/$defs/pluginUser` }),
+    portalMember: ajv.compile({ $ref: `${schema.$id}#/$defs/portalMember` }),
   };
 }
 
-function clientEvent(overrides = {}) {
+function event(overrides = {}) {
   return {
-    schema_version: "1.0.0",
-    registry_version: "1.0.0",
     event_id: "evt-01JZ0000000000000000000000",
-    binding_id: "binding-01JZ000000000000000000",
-    tool_key: "asset.image_exporter",
-    action_key: "asset.image_exporter.open",
-    event_type: "entry_clicked",
-    client_observed_at: "2026-07-22T07:00:00.000Z",
+    operation_id: "op-01JZ0000000000000000000000",
+    tool_key: "asset_ref_exporter",
+    action_key: "asset_ref_exporter.open",
+    event_type: "run_succeeded",
+    occurred_at: "2026-07-23T07:00:00.000Z",
+    result: "succeeded",
+    duration_ms: 250,
     plugin_version: "8.0.0",
-    ue_version: "4.26.2",
-    ui_version: "8.0.0",
-    process_instance_id: "process-01JZ00000000000000000",
-    session_id: "session-01JZ00000000000000000",
-    operation_id: "operation-01JZ000000000000000",
     ...overrides,
   };
 }
 
-function storedEvent(overrides = {}) {
+function errorLog(overrides = {}) {
   return {
-    ...clientEvent(),
-    plugin_principal_id: "principal_9c82d453d751",
-    server_received_at: "2026-07-22T07:00:01.000Z",
-    time_correction: {
-      applied: false,
-      corrected_observed_at: "2026-07-22T07:00:00.000Z",
-      clock_offset_ms: 1000,
-      reason: "within_tolerance",
-    },
+    event_id: "evt-01JZ0000000000000000000000",
+    uid: "firebase-user-1",
+    company_date: "2026-07-23",
+    tool_key: "asset_ref_exporter",
+    action_key: "asset_ref_exporter.open",
+    occurred_at: "2026-07-23T07:00:00.000Z",
+    error_type: "ue_runtime",
+    summary: "Asset processing failed.",
+    call_site: "asset.image_exporter.run",
+    fingerprint: "9a".repeat(32),
+    stack: "RuntimeError: processing failed\\n  at asset_image_exporter.run",
+    plugin_version: "8.0.0",
     ...overrides,
   };
 }
 
-function storedEventWithCorrection({ applied, clock_offset_ms, reason }) {
-  const value = storedEvent();
-  value.time_correction = {
-    ...value.time_correction,
-    applied,
-    corrected_observed_at: applied
-      ? value.server_received_at
-      : value.client_observed_at,
-    clock_offset_ms,
-    reason,
+function pluginUser(overrides = {}) {
+  return {
+    uid: "firebase-user-1",
+    email: "artist@xindong.com",
+    display_name: "Artist",
+    avatar_url: "https://lh3.googleusercontent.com/avatar",
+    last_login_at: "2026-07-23T07:00:00.000Z",
+    last_active_at: "2026-07-23T07:00:00.000Z",
+    plugin_version: "8.0.0",
+    updated_at: "2026-07-23T07:00:00.000Z",
+    ...overrides,
   };
-  return value;
 }
 
-test("accepts every fixed event category", () => {
-  const { client } = loadValidators();
-  for (const eventType of eventTypes) {
-    assert.equal(
-      client(clientEvent({ event_type: eventType })),
-      true,
-      `${eventType}: ${JSON.stringify(client.errors)}`,
-    );
+function portalMember(overrides = {}) {
+  return {
+    email: "admin@xindong.com",
+    role: "admin",
+    enabled: true,
+    created_at: "2026-07-23T07:00:00.000Z",
+    created_by: "firebase-admin",
+    updated_at: "2026-07-23T07:00:00.000Z",
+    updated_by: "firebase-admin",
+    ...overrides,
+  };
+}
+
+test("accepts every supported event type with its matching result", () => {
+  const { event: validate } = loadValidators();
+  const pairs = {
+    entry_clicked: "started",
+    dialog_opened: "started",
+    dialog_open_failed: "failed",
+    run_rejected: "rejected",
+    run_started: "started",
+    run_succeeded: "succeeded",
+    run_failed: "failed",
+    run_cancelled: "cancelled",
+    run_interrupted: "interrupted",
+    unexpected_exception: "unexpected",
+  };
+  for (const [event_type, result] of Object.entries(pairs)) {
+    const value = event({ event_type, result });
+    if (!["run_succeeded", "run_failed", "run_cancelled", "run_interrupted"].includes(value.event_type)) delete value.duration_ms;
+    assert.equal(validate(value), true, `${event_type}: ${JSON.stringify(validate.errors)}`);
   }
+  assert.equal(validate(event({ event_type: "run_failed", result: "succeeded", duration_ms: 100 })), false);
 });
 
-test("enforces SemVer 2.0 for event version fields", () => {
-  const { client } = loadValidators();
-  for (const plugin_version of ["8.0.0", "8.0.0-beta.1+build.5"]) {
-    assert.equal(
-      client(clientEvent({ plugin_version })),
-      true,
-      `${plugin_version}: ${JSON.stringify(client.errors)}`,
-    );
-  }
-  for (const plugin_version of ["8.0.0-01", "08.0.0"]) {
-    assert.equal(
-      client(clientEvent({ plugin_version })),
-      false,
-      `Invalid SemVer unexpectedly passed: ${plugin_version}`,
-    );
-  }
-});
-
-test("declares run_started as the only usage-counting event", () => {
-  const { schema } = loadValidators();
-  assert.deepEqual(schema["x-event-types"], eventTypes);
-  assert.equal(schema["x-usage-counted-event-type"], "run_started");
-});
-
-test("requires operation_id for every run lifecycle event", () => {
-  const { client } = loadValidators();
-  for (const eventType of eventTypes.filter((value) => value.startsWith("run_"))) {
-    const value = clientEvent({ event_type: eventType });
-    delete value.operation_id;
-    assert.equal(client(value), false, `${eventType} unexpectedly passed`);
-  }
-});
-
-test("keeps portal Firebase identity outside client and stored events", () => {
-  const { client, stored } = loadValidators();
-  assert.equal(client(clientEvent({ portal_uid: "firebase-user-1" })), false);
-  assert.equal(client(clientEvent({ firebase_uid: "firebase-user-1" })), false);
-  assert.equal(stored(storedEvent({ portal_uid: "firebase-user-1" })), false);
-});
-
-test("requires server-owned principal, receipt time, and clock correction on stored events", () => {
-  const { client, stored } = loadValidators();
-  assert.equal(stored(storedEvent()), true, JSON.stringify(stored.errors));
-  assert.equal(client(storedEvent()), false);
-
-  for (const field of [
-    "plugin_principal_id",
-    "server_received_at",
-    "time_correction",
-  ]) {
-    const value = storedEvent();
+test("rejects unknown tools-shaped fields, missing identity, and unsupported event types", () => {
+  const { event: validate } = loadValidators();
+  assert.equal(validate(event({ event_type: "button_clicked" })), false);
+  for (const field of ["event_id", "operation_id", "tool_key", "action_key", "occurred_at", "result", "plugin_version"]) {
+    const value = event();
     delete value[field];
-    assert.equal(stored(value), false, `${field} unexpectedly optional`);
+    assert.equal(validate(value), false, `${field} unexpectedly optional`);
+  }
+  assert.equal(validate(event({ portal_uid: "portal-user" })), false);
+});
+
+test("allows duration only on terminal run events and keeps it bounded", () => {
+  const { event: validate } = loadValidators();
+  for (const event_type of ["run_succeeded", "run_failed", "run_cancelled", "run_interrupted"]) {
+    assert.equal(validate(event({ event_type, result: event_type.slice(4), duration_ms: 604800000 })), true);
+  }
+  for (const duration_ms of [-1, 604800001, 1.5, "250"]) {
+    assert.equal(validate(event({ duration_ms })), false, `${duration_ms} unexpectedly valid`);
+  }
+  assert.equal(validate(event({ event_type: "run_started", result: "started", duration_ms: 1 })), false);
+});
+
+test("requires redacted bounded error metadata when an event references an error log", () => {
+  const { event: validate } = loadValidators();
+  const valid = event({ event_type: "run_failed", result: "failed", error_log_id: "evt-01JZ0000000000000000000000", error_summary: "Asset processing failed." });
+  assert.equal(validate(valid), true, JSON.stringify(validate.errors));
+  assert.equal(validate({ ...valid, error_summary: "Traceback marker retained after redaction." }), true, JSON.stringify(validate.errors));
+  for (const error_summary of ["C:\\Users\\artist\\scene.uasset", "\\\\server\\share\\scene.uasset", "/tmp", "/a", "foo /tmp", "token=secret", "request body: {\"password\":\"x\"}", "response body: {\"access_token\":\"x\"}", "x".repeat(513)]) {
+    assert.equal(validate({ ...valid, error_summary }), false, error_summary);
   }
 });
 
-test("accepts only bounded, redacted error details", () => {
-  const { client } = loadValidators();
-  const redactedError = {
-    error_category: "validation",
-    summary: "Selected asset did not satisfy the input contract.",
-    call_site: "asset_validator.validate_selection",
-    fingerprint: "9a".repeat(32),
+test("enforces the declared 32-shard and event-size limits", () => {
+  const { schema } = loadValidators();
+  assert.equal(schema["x-company-timezone"], "Asia/Shanghai");
+  assert.equal(schema["x-shard-count"], 32);
+  assert.equal(schema["x-max-events-per-shard"], 500);
+  assert.equal(schema["x-max-event-json-bytes"], 1536);
+  assert.equal(schema["x-max-shard-json-bytes"], 917504);
+  assert.ok(schema["x-max-events-per-shard"] * schema["x-max-event-json-bytes"] + 65536 < schema["x-max-shard-json-bytes"]);
+  assert.ok(schema["x-max-shard-json-bytes"] < 1048576);
+});
+
+test("bounds error log stack by UTF-8 bytes and rejects secrets or absolute paths", () => {
+  const { errorLog: validate } = loadValidators();
+  assert.equal(validate(errorLog()), true, JSON.stringify(validate.errors));
+  assert.equal(validate(errorLog({ stack: "Traceback (most recent call last):\\n  File \\\"tool.py\\\", line 42, in run" })), true, JSON.stringify(validate.errors));
+  assert.equal(validate(errorLog({ stack: "中".repeat(3000) })), false, "UTF-8 byte limit bypassed");
+  for (const stack of [
+    "C:\\Users\\artist\\scene.uasset",
+    "\\\\server\\share\\scene.uasset",
+    "/tmp",
+    "/a",
+    "foo /tmp",
+    "/home/artist/scene.uasset",
+    "authorization: Bearer secret-value",
+    "Bearer secret-value",
+    "refresh_token=secret-value",
+    "request body: {\"password\":\"x\"}",
+    "response body: {\"access_token\":\"x\"}",
+    "artist@example.com",
+  ]) {
+    assert.equal(validate(errorLog({ stack })), false, stack);
+  }
+});
+
+test("requires all identity and member fields with separate plugin and portal email boundaries", () => {
+  const { pluginUser: validatePluginUser, portalMember: validatePortalMember } = loadValidators();
+  assert.equal(validatePluginUser(pluginUser()), true, JSON.stringify(validatePluginUser.errors));
+  assert.equal(validatePortalMember(portalMember()), true, JSON.stringify(validatePortalMember.errors));
+  for (const field of ["uid", "email", "display_name", "avatar_url", "last_login_at", "last_active_at", "plugin_version", "updated_at"]) {
+    const value = pluginUser();
+    delete value[field];
+    assert.equal(validatePluginUser(value), false, `pluginUsers.${field} unexpectedly optional`);
+  }
+  for (const field of ["email", "role", "enabled", "created_at", "created_by", "updated_at", "updated_by"]) {
+    const value = portalMember();
+    delete value[field];
+    assert.equal(validatePortalMember(value), false, `portalMembers.${field} unexpectedly optional`);
+  }
+  assert.equal(validatePluginUser(pluginUser({ email: "artist@example.com" })), false);
+  assert.equal(validatePortalMember(portalMember({ email: "snkhtm@gmail.com" })), true);
+  assert.equal(validatePortalMember(portalMember({ email: "other@gmail.com" })), false);
+  assert.equal(validatePortalMember(portalMember({ email: "Admin@xindong.com" })), false);
+  assert.equal(validatePortalMember(portalMember({ role: "owner" })), false);
+});
+
+test("rejects an oversized event document in the contract validator", () => {
+  const { schema, dailyShard } = loadValidators();
+  assert.equal(schema["x-max-events-per-shard"], 500);
+  const events = Array.from({ length: 501 }, () => event());
+  const daily = {
+    company_date: "2026-07-23",
+    uid: "firebase-user-1",
+    tool_key: "asset.image_exporter",
+    shard: "07",
+    events,
+    first_occurred_at: "2026-07-23T07:00:00.000Z",
+    last_occurred_at: "2026-07-23T07:00:00.000Z",
+    last_result: "succeeded",
+    plugin_version: "8.0.0",
   };
-  assert.equal(
-    client(clientEvent({ event_type: "run_failed", error: redactedError })),
-    true,
-    JSON.stringify(client.errors),
+  assert.equal(dailyShard(daily), false, "oversized event array unexpectedly valid");
+});
+
+test("enforces the per-event UTF-8 JSON budget in the runtime validator", async () => {
+  const { validateUsageEvent } = await import(
+    pathToFileURL(path.join(repositoryRoot, "scripts", "validate-contracts.mjs")).href,
   );
-
-  const rejectedErrors = [
-    { ...redactedError, traceback: "Traceback (most recent call last):" },
-    { ...redactedError, local_path: "C:\\Users\\artist\\scene.uasset" },
-    { ...redactedError, token: "secret-token" },
-    { ...redactedError, summary: "x".repeat(513) },
-    { ...redactedError, summary: "Traceback (most recent call last): failure" },
-    { ...redactedError, summary: "Could not open C:\\Users\\artist\\scene.uasset" },
-    { ...redactedError, summary: "Authorization: Bearer abc.def.ghi" },
-  ];
-
-  for (const error of rejectedErrors) {
-    assert.equal(
-      client(clientEvent({ event_type: "run_failed", error })),
-      false,
-      `Sensitive error unexpectedly passed: ${JSON.stringify(error)}`,
-    );
-  }
+  const large = event({
+    event_id: `e${"a".repeat(127)}`,
+    operation_id: `o${"a".repeat(127)}`,
+    error_log_id: `e${"a".repeat(127)}`,
+    error_summary: "中".repeat(512),
+  });
+  assert.ok(Buffer.byteLength(JSON.stringify(large), "utf8") > 1536);
+  assert.throws(() => validateUsageEvent(large), /UTF-8 JSON bytes/i);
 });
 
-test("requires a bounded symbolic call site for error fingerprints", () => {
-  const { client } = loadValidators();
-  const error = {
-    error_category: "validation",
-    summary: "Selected asset did not satisfy the input contract.",
-    call_site: "asset_validator.validate_selection",
-    fingerprint: "9a".repeat(32),
-  };
-  assert.equal(
-    client(clientEvent({ event_type: "run_failed", error })),
-    true,
-    JSON.stringify(client.errors),
+test("runtime validator binds tool and action keys to the checked-in registry", async () => {
+  const { validateUsageEvent, validateErrorLog } = await import(
+    pathToFileURL(path.join(repositoryRoot, "scripts", "validate-contracts.mjs")).href,
   );
-  assert.equal(
-    client(clientEvent({ event_type: "run_failed", error: { ...error, call_site: "C:\\Users\\artist\\tool.py:42" } })),
-    false,
-  );
-});
-
-test("rejects secret assignments in free-form UE version metadata", () => {
-  const { client } = loadValidators();
-  assert.equal(client(clientEvent({ ue_version: "token=secret-value" })), false);
-  assert.equal(client(clientEvent({ ue_version: "4.26.2-15973114+++UE4+Release-4.26" })), true, JSON.stringify(client.errors));
-});
-
-const sensitiveSummaryCases = [
-  ["Unix absolute paths", "Could not open /opt/tl/assets/scene.uasset"],
-  ["email addresses", "Contact artist.name@example.com for access"],
-  ["refresh tokens", "Request failed: refresh_token=secret-value"],
-  ["cookie headers", "Request failed: Cookie: session=secret-value"],
-  ["bare JWT credentials", "Request failed with eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhcnRpc3QtMTIzIn0.invalid_signature_123456"],
-  ["Python stack frames", "File \"tool.py\", line 42, in run"],
-];
-
-for (const [label, summary] of sensitiveSummaryCases) {
-  test(`rejects ${label} in error summaries`, () => {
-    const { client } = loadValidators();
-    const error = {
-      error_category: "internal",
-      summary,
-      call_site: "usage.ingest",
-      fingerprint: "9a".repeat(32),
-    };
-    assert.equal(
-      client(clientEvent({ event_type: "run_failed", error })),
-      false,
-      `Sensitive summary unexpectedly passed: ${summary}`,
-    );
-  });
-}
-
-const credentialSummaryCases = [
-  ["lowercase authorization headers", "authorization: bearer secret-value"],
-  ["mixed-case bearer credentials", "bEaReR secret-value"],
-  ["lowercase cookie headers", "cookie: session=secret-value"],
-  ["access tokens", "access_token=secret-value"],
-  ["refresh tokens", "refresh_token: secret-value"],
-  ["ID tokens", "id_token=secret-value"],
-  ["generic tokens", "token: secret-value"],
-  ["passwords", "password=secret-value"],
-  ["passwd values", "passwd: secret-value"],
-  ["secret values", "secret=secret-value"],
-  ["credential values", "credential: secret-value"],
-  ["underscore API keys", "api_key=secret-value"],
-  ["hyphen API keys", "api-key: secret-value"],
-  ["hyphen access tokens", "access-token=secret-value"],
-  ["underscore client secrets", "client_secret=secret-value"],
-  ["hyphen client secrets", "CLIENT-SECRET: secret-value"],
-  ["camel-case client secrets", "cLiEnTsEcReT=secret-value"],
-  ["underscore private keys", "private_key=secret-value"],
-  ["hyphen private keys", "PRIVATE-KEY: secret-value"],
-  ["camel-case private keys", "pRiVaTeKeY=secret-value"],
-  ["camel-case API keys", "aPiKeY: secret-value"],
-  ["namespaced OAuth tokens", "oauth_token=secret-value"],
-  ["namespaced session tokens", "session_token: secret-value"],
-  ["namespaced client secrets", "oauth_client_secret=secret-value"],
-  ["namespaced hyphen secrets", "oauth-client-secret=secret-value"],
-  ["camel-case namespaced secrets", "oauthClientSecret: secret-value"],
-  ["mixed-case namespaced tokens", "OaUtH_ToKeN=secret-value"],
-  ["quoted JSON token keys", "{\"access_token\":\"secret-value\"}"],
-];
-
-for (const [label, summary] of credentialSummaryCases) {
-  test(`rejects ${label} in error summaries`, () => {
-    const { client } = loadValidators();
-    const error = {
-      error_category: "internal",
-      summary,
-      call_site: "usage.ingest",
-      fingerprint: "9a".repeat(32),
-    };
-    assert.equal(
-      client(clientEvent({ event_type: "run_failed", error })),
-      false,
-      `Credential summary unexpectedly passed: ${summary}`,
-    );
-  });
-}
-
-test("allows credential words without a value marker", () => {
-  const { client } = loadValidators();
-  for (const summary of [
-    "Token refresh failed after identity provider timeout.",
-    "OAuth token refresh failed after identity provider timeout.",
-    "The access_token field was not returned.",
-    "token=\"\"",
-  ]) {
-    const error = {
-      error_category: "internal",
-      summary,
-      call_site: "usage.ingest",
-      fingerprint: "9a".repeat(32),
-    };
-    assert.equal(
-      client(clientEvent({ event_type: "run_failed", error })),
-      true,
-      `${summary}: ${JSON.stringify(client.errors)}`,
-    );
-  }
-});
-
-const terminalEventTypes = [
-  "run_succeeded",
-  "run_failed",
-  "run_cancelled",
-  "run_interrupted",
-];
-
-test("accepts bounded duration_ms on terminal client and stored events", () => {
-  const { client, stored } = loadValidators();
-  for (const [validate, createEvent] of [
-    [client, clientEvent],
-    [stored, storedEvent],
-  ]) {
-    for (const eventType of terminalEventTypes) {
-      for (const duration_ms of [0, 604800000]) {
-        assert.equal(
-          validate(createEvent({ event_type: eventType, duration_ms })),
-          true,
-          `${eventType}/${duration_ms}: ${JSON.stringify(validate.errors)}`,
-        );
-      }
-    }
-  }
-});
-
-test("rejects invalid duration_ms bounds and types", () => {
-  const { client, stored } = loadValidators();
-  for (const [validate, createEvent] of [
-    [client, clientEvent],
-    [stored, storedEvent],
-  ]) {
-    for (const duration_ms of [-1, 604800001, 1.5, "1000"]) {
-      assert.equal(
-        validate(createEvent({ event_type: "run_failed", duration_ms })),
-        false,
-        `Invalid duration unexpectedly passed: ${duration_ms}`,
-      );
-    }
-  }
-});
-
-test("rejects duration_ms on nonterminal client and stored events", () => {
-  const { client, stored } = loadValidators();
-  for (const [validate, createEvent] of [
-    [client, clientEvent],
-    [stored, storedEvent],
-  ]) {
-    for (const eventType of eventTypes.filter(
-      (value) => !terminalEventTypes.includes(value),
-    )) {
-      assert.equal(
-        validate(createEvent({ event_type: eventType, duration_ms: 10 })),
-        false,
-        `${eventType} unexpectedly accepted duration_ms`,
-      );
-    }
-  }
-});
-
-test("publishes executable time correction and operation recovery constants", () => {
-  const { schema, stored } = loadValidators();
-  assert.deepEqual(schema["x-time-policy"], {
-    company_timezone: "Asia/Shanghai",
-    utc_offset_minutes: 480,
-    observes_daylight_saving_time: false,
-    max_client_behind_ms: 2592000000,
-    max_client_ahead_ms: 86400000,
-    permanent_rejection_outside_hard_range: true,
-    correct_if_client_ahead_over_ms: 600000,
-    correct_if_client_behind_over_ms: 604800000,
-    correction_target: "server_received_at",
-    bucket_time_field: "corrected_observed_at",
-  });
-  assert.deepEqual(schema["x-operation-recovery-policy"], {
-    startup_recovery_event_type: "run_interrupted",
-    startup_recovery_requires_persisted_operation: true,
-    startup_recovery_requires_missing_terminal: true,
-    startup_recovery_idempotency_scope: ["operation_id", "run_interrupted"],
-    abandoned_after_ms: 86400000,
-    abandoned_is_derived_display_state: true,
-    source_event_type_is_immutable: true,
-    later_run_interrupted_supersedes_abandoned: true,
-  });
-
-  for (const value of [
-    storedEventWithCorrection({
-      applied: true,
-      clock_offset_ms: -86400000,
-      reason: "client_clock_ahead",
-    }),
-    storedEventWithCorrection({
-      applied: true,
-      clock_offset_ms: 2592000000,
-      reason: "client_clock_behind",
-    }),
-  ]) {
-    assert.equal(stored(value), true, JSON.stringify(stored.errors));
-  }
-  for (const value of [
-    storedEventWithCorrection({
-      applied: true,
-      clock_offset_ms: -86400001,
-      reason: "client_clock_ahead",
-    }),
-    storedEventWithCorrection({
-      applied: true,
-      clock_offset_ms: 2592000001,
-      reason: "client_clock_behind",
-    }),
-  ]) {
-    assert.equal(
-      stored(value),
-      false,
-      `${value.time_correction.clock_offset_ms} unexpectedly passed`,
-    );
-  }
-});
-
-test("enforces reason-specific time correction consistency", () => {
-  const { stored } = loadValidators();
-  const validCases = [
-    { applied: false, clock_offset_ms: -600000, reason: "within_tolerance" },
-    { applied: false, clock_offset_ms: 604800000, reason: "within_tolerance" },
-    { applied: true, clock_offset_ms: -86400000, reason: "client_clock_ahead" },
-    { applied: true, clock_offset_ms: -600001, reason: "client_clock_ahead" },
-    { applied: true, clock_offset_ms: 604800001, reason: "client_clock_behind" },
-    { applied: true, clock_offset_ms: 2592000000, reason: "client_clock_behind" },
-  ];
-  for (const correction of validCases) {
-    assert.equal(
-      stored(storedEventWithCorrection(correction)),
-      true,
-      `${JSON.stringify(correction)}: ${JSON.stringify(stored.errors)}`,
-    );
-  }
-
-  const invalidCases = [
-    { applied: true, clock_offset_ms: 0, reason: "within_tolerance" },
-    { applied: false, clock_offset_ms: -600001, reason: "within_tolerance" },
-    { applied: false, clock_offset_ms: 604800001, reason: "within_tolerance" },
-    { applied: false, clock_offset_ms: -600001, reason: "client_clock_ahead" },
-    { applied: true, clock_offset_ms: -600000, reason: "client_clock_ahead" },
-    { applied: false, clock_offset_ms: 604800001, reason: "client_clock_behind" },
-    { applied: true, clock_offset_ms: 604800000, reason: "client_clock_behind" },
-    { applied: true, clock_offset_ms: 0, reason: "invalid_client_time" },
-  ];
-  for (const correction of invalidCases) {
-    assert.equal(
-      stored(storedEventWithCorrection(correction)),
-      false,
-      `Contradictory correction unexpectedly passed: ${JSON.stringify(correction)}`,
-    );
-  }
-});
-
-test("rejects unknown events and arbitrary top-level fields", () => {
-  const { client } = loadValidators();
-  assert.equal(client(clientEvent({ event_type: "button_clicked" })), false);
-  assert.equal(client(clientEvent({ arbitrary_payload: { any: "value" } })), false);
+  assert.doesNotThrow(() => validateUsageEvent(event()));
+  assert.throws(() => validateUsageEvent(event({ tool_key: "missing.tool", action_key: "missing.tool.run" })), /unknown tool key/i);
+  assert.throws(() => validateUsageEvent(event({ action_key: "asset_ref_exporter.missing" })), /unknown action key/i);
+  assert.doesNotThrow(() => validateErrorLog(errorLog()));
+  assert.throws(() => validateErrorLog(errorLog({ action_key: "asset_ref_exporter.missing" })), /unknown action key/i);
 });

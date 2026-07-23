@@ -10,7 +10,7 @@ const validatorUrl = pathToFileURL(path.join(root, "scripts", "validate-producti
 
 const validEnvironment = {
   PORTAL_DEPLOY_ENV: "production",
-  PORTAL_PUBLIC_BASE_PATH: "/TL_Art_Tool_Usage_Analytics/",
+  PORTAL_PUBLIC_BASE_PATH: "/TL_Art_Plugin_Usage_Analytics_Page/",
   PORTAL_FIREBASE_API_KEY: "valid-public-web-api-key-12345",
   PORTAL_FIREBASE_AUTH_DOMAIN: "tl-analytics.firebaseapp.com",
   PORTAL_FIREBASE_PROJECT_ID: "tl-analytics-prod",
@@ -61,6 +61,13 @@ test("authorized-domain live check compares Firebase project configuration", asy
     { status: 200 },
   );
   await assert.doesNotReject(() => verifyFirebaseAuthorizedDomains(config, success));
+  await assert.doesNotReject(() => verifyFirebaseAuthorizedDomains(
+    config,
+    async () => new Response(
+      JSON.stringify({ projectId: config.projectNumber, authorizedDomains: config.authorizedDomains }),
+      { status: 200 },
+    ),
+  ));
   await assert.rejects(
     () => verifyFirebaseAuthorizedDomains(
       config,

@@ -2,11 +2,21 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. This plan intentionally contains no example implementation code, following the project owner's documentation preference.
 
-**Goal:** 把 `TL_Art_Tool_Usage_Analytics` 从 Functions/Secret Manager 企业级平台改为个人 Firebase Spark 可部署的 Firestore 直连统计网页。
+**Goal:** 把 `TL_Art_Plugin_Usage_Analytics_Page` 从 Functions/Secret Manager 企业级平台改为个人 Firebase Spark 可部署的 Firestore 直连统计网页。
 
 **Architecture:** GitHub Pages 托管 Vue 统计网页，Firebase Authentication 提供 Google 登录，Cloud Firestore 保存插件用户、每日事件分桶、错误日志和门户成员。Firestore Rules 直接区分普通插件用户、查看者和管理员，不保留任何可信服务端组件。
 
 **Tech Stack:** Vue 3、TypeScript、Vite、Firebase Web SDK、Cloud Firestore Rules、Firestore Emulator、Playwright、GitHub Pages。
+
+**当前审查状态（2026-07-23）：** Tasks 1-8 的代码、Rules、合同和页面已落地；详细任务清单中的未勾选项是历史实施记录，本段状态为当前结论。本轮复审补充了北京时间公司日期计算、跨用户事件去重、查看者的成员集合隔离、Spark 5,000 次工具操作安全工作线及网页逻辑测试，并修复了非法时间筛选、意外异常终态关联和异常日志列表键碰撞。Firestore Rules Emulator 权限矩阵已通过；Task 9 的真实 Firebase 账号/上传、UE Editor、Playwright 截图和部署验证仍是外部验收项，不能以静态合同或 Emulator 测试替代。
+
+**复审后的执行状态：**
+
+- [x] Tasks 1-8 的源代码、合同、Rules、网页和本地测试实现完成。
+- [x] ImportTool 统计开关当前为 `enabled=false`，配置异常时也停用统计并放行业务。
+- [x] ImportTool 专项/全量测试、网页 `verify:core`、跨仓 registry parity、Python 编译和 `git diff --check` 已在本轮重新执行。
+- [x] Firestore Rules Emulator 权限矩阵已在 JDK 25 LTS 下通过 10/10。
+- [ ] 真实 Firebase 账号/上传、UE Editor 实跑、真实 Playwright 交互截图和部署/回滚演练仍需外部环境。
 
 ---
 
@@ -84,7 +94,7 @@
 - [ ] 禁止浏览器客户端改写事件归属、日期、工具 key 和错误日志归属。
 - [ ] 为日期、UID、工具 key、结果和错误时间查询建立最少复合索引。
 - [ ] 对 `usageDaily.events` 设置单字段索引豁免。
-- [ ] 用 Firestore Emulator 验证未登录、非公司账号、普通用户、查看者和管理员完整权限矩阵。
+- [x] 用 Firestore Emulator 验证未登录、非公司账号、普通用户、查看者和管理员完整权限矩阵。
 
 ### Task 5: 将网页数据层改为 Firestore 直连
 
@@ -120,7 +130,7 @@
 
 - [ ] 保留登录、概览、用户统计、工具统计、事件明细、异常日志、成员管理和数据管理视图。
 - [ ] 删除设备、租约、绑定、准入策略预览、主体 ID、代际和回放相关页面与文案。
-- [ ] 概览显示总次数、活跃用户、活跃工具、成功率、失败数、每日趋势和 15,000 次安全额度占用。
+- [ ] 概览显示总次数、活跃用户、活跃工具、成功率、失败数、每日趋势和 5,000 次安全工作线占用；说明该线按每次操作至少两次写入并预留错误日志/账号写入估算，不是硬限制。
 - [ ] 事件明细显示每次操作的用户、工具、动作、准确时间、结果和持续时间。
 - [ ] 普通无权限账号只显示无查看权限状态；查看者不显示成员管理和数据管理。
 - [ ] 管理员可以按邮箱增加查看者、禁用/恢复/移除成员，并有明确确认步骤。
@@ -172,7 +182,7 @@
 - Modify as required by failures: `docs/`
 
 - [ ] 运行结构、合同、工具注册表、Pages artifact 和 Web build 验证。
-- [ ] 运行 Firestore Rules Emulator 权限矩阵。
+- [x] 运行 Firestore Rules Emulator 权限矩阵。
 - [ ] 运行 Playwright 桌面与移动端登录、角色、筛选、成员和清理流程。
 - [ ] 搜索确认仓库没有 Functions、Secret Manager、Scheduler、租约和配对运行时残留。
 - [ ] 用 Firebase Emulator 导入代表性每日分桶，确认逐次事件数量、首次/最后时间和错误统计一致。

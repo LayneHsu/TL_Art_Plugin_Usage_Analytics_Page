@@ -16,24 +16,27 @@ function validateLifecycle(entry, label) {
 }
 
 function validateToolRegistrySemantics(registry) {
-  if (registry.registry_status === "active" && registry.tools.length === 0) {
-    throw new Error("Active registry requires at least one tool");
+  if (!registry || !Array.isArray(registry.tools) || registry.tools.length === 0) {
+    throw new Error("Tool registry requires at least one tool");
   }
   const toolKeys = new Set();
+  const actionKeys = new Set();
   for (const tool of registry.tools) {
     if (toolKeys.has(tool.tool_key)) throw new Error(`Duplicate stable key: ${tool.tool_key}`);
     toolKeys.add(tool.tool_key);
   }
-  const actionKeys = new Set();
   for (const tool of registry.tools) {
     validateLifecycle(tool, `tool ${tool.tool_key}`);
-    if (registry.registry_status === "active" && tool.actions.length === 0) {
-      throw new Error(`Active registry requires at least one action for tool ${tool.tool_key}`);
+    if (tool.actions.length === 0) {
+      throw new Error(`Tool ${tool.tool_key} requires at least one action`);
     }
     for (const action of tool.actions) {
       if (toolKeys.has(action.action_key)) throw new Error(`Stable key reused across tool and action: ${action.action_key}`);
       if (actionKeys.has(action.action_key)) throw new Error(`Duplicate stable key: ${action.action_key}`);
       actionKeys.add(action.action_key);
+      if (!action.action_key.startsWith(`${tool.tool_key}.`)) {
+        throw new Error(`Action ${action.action_key}: action_key must use the parent tool_key prefix`);
+      }
       validateLifecycle(action, `action ${action.action_key}`);
       if (semver.lt(action.introduced_version, tool.introduced_version)) {
         throw new Error(`Action ${action.action_key}: introduced_version precedes tool introduced_version`);
@@ -50,12 +53,14 @@ function validateToolRegistrySemantics(registry) {
   return registry;
 }
 
-function requireActiveToolRegistry(registry) {
-  const validated = validateToolRegistrySemantics(registry);
-  if (validated.registry_status !== "active" || validated.tools.length === 0) {
-    throw new Error("Production registry must be active and nonempty before deployment");
+function validateRegisteredToolAction(registry, toolKey, actionKey) {
+  validateToolRegistrySemantics(registry);
+  const tool = registry.tools.find((entry) => entry.tool_key === toolKey);
+  if (!tool) throw new Error(`Unknown tool key: ${toolKey}`);
+  if (!tool.actions.some((entry) => entry.action_key === actionKey)) {
+    throw new Error(`Unknown action key for tool ${toolKey}: ${actionKey}`);
   }
-  return validated;
+  return true;
 }
 
-module.exports = { validateToolRegistrySemantics, requireActiveToolRegistry };
+module.exports = { validateToolRegistrySemantics, validateRegisteredToolAction };

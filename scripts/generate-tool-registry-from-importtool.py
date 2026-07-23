@@ -79,7 +79,6 @@ def build_registry(module):
         "$schema": "./tool-registry.schema.json",
         "schema_version": "1.0.0",
         "registry_version": "1.0.0",
-        "registry_status": "active",
         "tools": tools,
     }
 

@@ -1,19 +1,16 @@
-# 数据字典与统计口径
+# 数据字典
 
-## 身份域
+| 集合 | 文档 ID | 关键字段 | 写入者 | 读取者 |
+| --- | --- | --- | --- | --- |
+| `pluginUsers` | Firebase UID | 邮箱、姓名、头像、最近登录、最近活跃、插件版本 | 同 UID 插件 | 启用的 admin/viewer |
+| `usageDaily` | 日期 + UID + 工具 + `00..31` 分片 | 事件数组、首末时间、最后结果、插件版本 | 同 UID 插件 | 启用的 admin/viewer |
+| `errorLogs` | 事件 ID | 脱敏摘要、调用位置、指纹、8 KiB 内调用栈 | 同 UID 插件 | 启用的 admin/viewer |
+| `portalMembers` | 规范化门户邮箱（公司邮箱或 `snkhtm@gmail.com`） | `admin`/`viewer`、启用状态、变更元数据 | admin（不能锁定自己） | 本人读取自己的记录；admin 读取成员清单 |
 
-门户身份来自 Firebase Auth，主键是 Firebase UID，角色只有 `visitor` 和 `admin`。插件身份来自独立 Google OAuth/OIDC 配对，主键是经验证的 `issuer + subject` 派生的 `plugin_principal_id`。两者可以使用同一个公司邮箱，但不共享 UID、Token、角色或准入状态。
+事件结构由 `contracts/usage-event-schema.json` 定义，工具和动作结构由 `contracts/tool-registry.json` 定义。Firestore Rules 只做身份、归属、字段集合和大小边界校验，不替代客户端完整 JSON Schema 校验。
 
 ## 事件字段
 
-客户端事件包含 `event_id`、`schema_version`、`registry_version`、`binding_id`、`tool_key`、`action_key`、`event_type`、客户端观测时间、插件/UE/UI 版本、进程实例、会话和 `operation_id`。服务端补充 `plugin_principal_id`、服务端接收时间和时间校正结果；客户端不能提交门户 UID、聚合增量或任意用户身份。
+`event_id` 用于幂等，`operation_id` 用于把开始和终态关联，`tool_key` 指向工具注册表中的工具，`action_key` 指向该工具的动作，`occurred_at` 保存准确 UTC 时间，`result` 表示开始、成功、失败、取消、中断或异常结果，`duration_ms` 只出现在终态，`plugin_version` 用于版本筛选。
 
-`run_started` 是唯一计数事件。`run_succeeded`、`run_failed`、`run_cancelled` 和 `run_interrupted` 通过 `operation_id` 关联同一次执行。入口点击、窗口打开和 `run_rejected` 用于诊断或导航分析，不计入工具使用次数。长期缺少终态的操作只显示为派生的 `abandoned`。
-
-## 聚合维度
-
-日汇总按公司时区和统一时间校正规则维护工具、动作、插件人员、结果、耗时和错误指纹维度。网页显示姓名、头像和邮箱只是当前资料快照；历史统计永远按不可变 `plugin_principal_id` 区分，同邮箱的新身份不会并入旧记录。
-
-## 错误与保留
-
-错误只保存有限的错误类别、脱敏摘要、稳定指纹、版本、关联键和首次/最近时间，不保存原始 traceback、路径、资产名、令牌或完整日志。原始事件、聚合、认证审计和错误摘要遵循各自保留策略；重放或清理不能删除仍在重建窗口内需要的数据。
+错误事件通过 `error_log_id` 关联 `errorLogs`。网页从逐次事件计算每个用户、工具、动作的次数、首末时间和成功率。

@@ -12,7 +12,7 @@ const validatorPath = path.join(
   "scripts",
   "verify-pages-artifacts.mjs",
 );
-const expectedBasePath = "/TL_Art_Tool_Usage_Analytics/";
+const expectedBasePath = "/TL_Art_Plugin_Usage_Analytics_Page/";
 
 function createHtml(basePath = expectedBasePath) {
   return `<!doctype html>

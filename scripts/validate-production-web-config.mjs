@@ -75,6 +75,7 @@ export function validateProductionWebConfig(environment) {
   return {
     apiKey: values.PORTAL_FIREBASE_API_KEY,
     projectId: values.PORTAL_FIREBASE_PROJECT_ID,
+    projectNumber: values.PORTAL_FIREBASE_MESSAGING_SENDER_ID,
     pagesOrigin,
     authorizedDomains,
   };
@@ -86,8 +87,9 @@ export async function verifyFirebaseAuthorizedDomains(config, fetchImpl = fetch)
   );
   if (!response.ok) throw new Error(`Firebase authorized-domain check failed with HTTP ${response.status}`);
   const project = await response.json();
-  if (project.projectId && project.projectId !== config.projectId) {
-    throw new Error(`Firebase project mismatch: expected ${config.projectId}, received ${project.projectId}`);
+  const liveProjectId = String(project.projectId || "");
+  if (liveProjectId && ![config.projectId, config.projectNumber].includes(liveProjectId)) {
+    throw new Error(`Firebase project mismatch: expected ${config.projectId} or ${config.projectNumber}, received ${liveProjectId}`);
   }
   const liveDomains = new Set(
     Array.isArray(project.authorizedDomains)
