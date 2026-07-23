@@ -34,12 +34,13 @@ test("browser gate covers authorization, revocation, races, responsiveness and a
   assert.match(workflow, /npm run test:e2e/);
 });
 
-test("emulator mode connects the browser to Firestore without touching plugin pairing", () => {
+test("emulator mode connects the browser directly to Auth and Firestore", () => {
   const firebase = read("web/src/portal/firebase.ts");
-  const pairing = read("web/src/plugin-pairing/PluginPairingPage.vue");
+  const vite = read("web/vite.config.ts");
   assert.match(firebase, /connectFirestoreEmulator/);
   assert.match(firebase, /PORTAL_FIRESTORE_EMULATOR_HOST/);
-  assert.doesNotMatch(pairing, /firebase\/firestore|watchPortalAccess/);
+  assert.match(firebase, /connectAuthEmulator/);
+  assert.doesNotMatch(vite, /VITE_PLUGIN_/);
 });
 
 test("web build splits Vue, Firebase Auth and Firestore into bounded chunks", () => {

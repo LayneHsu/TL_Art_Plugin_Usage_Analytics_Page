@@ -37,7 +37,3 @@ jobs:
         run: npm run test:e2e
       - name: Test Firestore rules
         run: npm run test:rules
-      - name: Test plugin auth Firestore transactions
-        run: npm run test:plugin-auth-emulator
-      - name: Test usage ingestion Firestore transactions
-        run: npm run test:usage-emulator

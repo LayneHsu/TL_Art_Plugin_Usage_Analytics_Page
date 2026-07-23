@@ -1,73 +1,55 @@
 # TL Art Tool Usage Analytics
 
-This repository is the independent platform foundation for TL art tool usage analytics. It contains a Vue portal workspace and a Firebase Functions workspace. It does not import, build, or reference runtime source from ImportTool or any PCG repository.
+This repository hosts the independent usage analytics portal for TL art tools. The target runtime stays within the personal Firebase Spark plan: GitHub Pages serves the Vue application, Firebase Authentication handles Google sign-in, and Cloud Firestore stores usage and access data.
 
-The platform is independent from the PCG Firebase project. Its Firebase projects, data, deployment identity, and authentication domains are isolated. Portal user authentication and future plugin device authentication must remain separate trust domains with separate credentials and authorization policies.
-
-The current foundation includes versioned usage-event and tool-registry contracts,
-deny-by-default Firestore browser boundaries, required query indexes, plugin-only
-Google OAuth device pairing, one-hour leases, credential recovery, audited event
-authorization, and Firestore emulator transaction tests. The server-side event
-ingestion, idempotent daily aggregation, redacted error grouping, retention,
-monitoring, replay services, and the separate portal role/query boundary are
-implemented behind the draft-registry production gate. Portal Firebase Auth is
-used only for web viewing; plugin pairing and leases remain a separate domain.
+The project is independent from the PCG Firebase project. It has its own Firebase project, Firestore data, authentication configuration, and GitHub Pages deployment. ImportTool remains a separate repository and consumes only the versioned contracts maintained here.
 
 ## Repository layout
 
-- `web/`: Vue 3, Vite, and TypeScript static portal shell.
-- `functions/`: Firebase Functions v2 and TypeScript workspace.
-- `config/environments/`: production, test, and emulator configuration contracts.
-- `contracts/`: authoritative event, registry, identity, and redaction contracts.
-- `docs/`: environment, deployment, permissions, retention, data dictionary, portal operations, and split-repository rollback requirements.
-- `.github/workflows/`: separate verification, Pages, and Firebase workflows.
+- `web/`: Vue 3, Vite, TypeScript, and Firebase Web SDK portal.
+- `config/environments/`: public web configuration templates for production, test, and local emulators.
+- `contracts/`: usage event, tool registry, and error redaction contracts shared with the plugin.
+- `firestore.rules` and `firestore.indexes.json`: browser authorization and query configuration.
+- `tests/`: structure, contract, Firestore emulator, Pages artifact, and Playwright checks.
 
 ## Local commands
 
-Use Node.js `>=22.12.0 <23`. Local builds, Functions, and CI share this Node 22 range.
+Use Node.js `>=22.12.0 <23`.
 
 ```powershell
 npm install
 npm run test:structure
 npm run test:contracts
-npm run test:usage
+npm run test:cross
 npm run build:web
-npm run build:functions
-npm run verify
+npm run test:pages-artifacts
 ```
 
-Firestore Rules tests require Java 21 and use the repository-local Firebase CLI:
+Firestore Rules tests also require Java 21:
 
 ```powershell
 npm run test:rules
-npm run test:usage-emulator
 ```
 
-Firebase CLI commands use the repository-local pinned tool:
+Run the browser suite after installing Playwright Chromium:
 
 ```powershell
-npm run firebase -- --version
+npx playwright install chromium
+npm run test:e2e
 ```
 
 ## GitHub Pages
 
-The Vite base path is controlled by `PORTAL_PUBLIC_BASE_PATH`. Production defaults to this repository name, while the Pages workflow derives the path from the GitHub repository name. The build emits `404.html` and `.nojekyll` beside `index.html`, so project-subpath assets and direct refreshes use the same built application.
+`PORTAL_PUBLIC_BASE_PATH` controls the Vite base path. The production workflow derives it from the repository name and publishes `web/dist`. Each build includes `404.html` and `.nojekyll` so direct refreshes continue to load the application under the repository subpath.
 
-## Configuration and secrets
+The Pages build accepts only public Firebase Web identifiers, the Pages origin, and the Firebase Auth authorized-domain list. No private key, refresh token, account credential, or deployment credential belongs in the repository or browser bundle.
 
-Firebase Web SDK client values are public identifiers and may be provided to the Pages build through GitHub environment variables. Google Cloud private keys, Firebase deployment tokens, management credentials, and plugin device credentials must never be committed or exposed to the browser bundle.
+## External setup
 
-All portal-owned keys use `PORTAL_`. Plugin server values use `PLUGIN_`, while the
-pairing page exposes only `VITE_PLUGIN_AUTH_BASE_URL`. See `docs/environment.md`
-before adding a variable.
+1. Create a dedicated Firebase project on the Spark plan.
+2. Enable Google sign-in and register the Pages hostname as an authorized domain.
+3. Create the Firestore database, then publish the reviewed Rules and Indexes.
+4. Add the public `PORTAL_FIREBASE_*`, Pages origin, and authorized-domain values to the GitHub `github-pages` environment.
+5. After the Spark Firestore Rules/data contract has been deployed, create the first `portalMembers` administrator document before exposing the portal. During the intermediate scaffold migration, the old portal collections are not a supported production setup.
 
-## External setup required before deployment
-
-1. Create dedicated production and test Firebase projects that are not shared with PCG.
-2. Register the portal web apps and approved portal authentication domains.
-3. Create a GitHub `github-pages` environment and add the public `PORTAL_FIREBASE_*` repository variables.
-4. Create a GitHub `firebase-production` environment with the workload identity provider and deploy service account placeholders documented in `docs/deployment.md`.
-5. Grant the deploy identity only the roles required by the selected Firebase resources.
-6. Review and approve the retention policy before enabling data collection.
-
-No real project ID, token, private key, service-account file, or device credential belongs in this repository.
+The detailed data model, Rules, portal queries, and operator runbook are completed in later implementation tasks and remain protected by their own contracts.

@@ -64,11 +64,11 @@
 - Modify: `tests/contracts/usage-event-schema.test.mjs`
 - Modify: `tests/contracts/tool-registry.test.mjs`
 
-- [ ] 定义 `pluginUsers`、`usageDaily`、`errorLogs` 和 `portalMembers` 四个集合的字段、类型、大小上限和不可变字段。
-- [ ] 定义每日分桶事件字段，要求稳定 `event_id`、动作 key、发生时间、结果、持续时间和插件版本。
+- [ ] 定义 `pluginUsers`、32 分片 `usageDaily`、`errorLogs` 和 `portalMembers` 四个集合的字段、类型、大小上限和不可变字段。
+- [ ] 定义每日分片事件字段，要求稳定 `event_id`、动作 key、发生时间、结果、持续时间和插件版本；`event_id` 必须稳定选择同一分片。
 - [ ] 将错误调用栈上限固定为 8 KiB，并禁止 Token、凭据、请求正文和用户绝对目录进入错误字段。
 - [ ] 保留 ImportTool 工具注册表及跨仓一致性检查，删除服务端 registry activation/generation 概念。
-- [ ] 增加合同测试覆盖非法邮箱、跨 UID 数据、过大事件数组、过长错误日志和未知工具 key。
+- [ ] 增加合同测试覆盖非法邮箱、跨 UID 数据、非法分片、过大事件数组、过长错误日志和未知工具 key。
 
 ### Task 4: 重写 Firestore Rules 与索引
 
@@ -103,7 +103,7 @@
 
 - [ ] 删除全部 Functions URL、Bearer API 请求、配对路由和 Functions 错误映射。
 - [ ] 通过 Firebase Web SDK 读取当前邮箱对应的 `portalMembers` 权限。
-- [ ] 实现按日期、用户、工具和结果读取 `usageDaily`，在浏览器内生成汇总和趋势。
+- [ ] 实现按日期、用户、工具和结果读取 `usageDaily` 非空分片，在浏览器内去重并生成汇总和趋势。
 - [ ] 实现错误日志分页、成员查询和管理员成员变更。
 - [ ] 对未授权账号在任何统计查询前停止，并清空已有受保护状态。
 - [ ] 对查询取消、登出、权限降级和路由切换保留代际保护，防止旧响应回填。

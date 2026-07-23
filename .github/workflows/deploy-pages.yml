@@ -37,10 +37,8 @@ jobs:
       PORTAL_FIREBASE_APP_ID: ${{ vars.PORTAL_FIREBASE_APP_ID }}
       PORTAL_FIREBASE_STORAGE_BUCKET: ${{ vars.PORTAL_FIREBASE_STORAGE_BUCKET }}
       PORTAL_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.PORTAL_FIREBASE_MESSAGING_SENDER_ID }}
-      PORTAL_FUNCTIONS_BASE_URL: ${{ vars.PORTAL_FUNCTIONS_BASE_URL }}
       PORTAL_PAGES_ORIGIN: ${{ vars.PORTAL_PAGES_ORIGIN }}
       PORTAL_FIREBASE_AUTHORIZED_DOMAINS_JSON: ${{ vars.PORTAL_FIREBASE_AUTHORIZED_DOMAINS_JSON }}
-      PORTAL_ALLOWED_WEB_ORIGINS_JSON: ${{ vars.PORTAL_ALLOWED_WEB_ORIGINS_JSON }}
     steps:
       - name: Require main ref
         if: github.ref != 'refs/heads/main'
@@ -74,8 +72,7 @@ jobs:
         uses: actions/deploy-pages@v4
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Smoke test deployed Pages and Functions CORS
+      - name: Smoke test deployed Pages
         env:
           PORTAL_SMOKE_BASE_URL: ${{ steps.deployment.outputs.page_url }}
-          PORTAL_SMOKE_FUNCTIONS_BASE_URL: ${{ vars.PORTAL_FUNCTIONS_BASE_URL }}
         run: npm run test:pages-smoke

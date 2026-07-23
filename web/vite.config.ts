@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => {
       environment.PORTAL_PUBLIC_BASE_PATH || defaultBasePath,
     ),
     envDir: path.join(repositoryRoot, "config", "environments"),
-    envPrefix: ["PORTAL_", "VITE_PLUGIN_"],
+    envPrefix: "PORTAL_",
     plugins: [vue(), createPagesArtifacts()],
     build: {
       rollupOptions: {

@@ -14,88 +14,51 @@ const environmentDirectory = path.join(repositoryRoot, "config", "environments")
 test("standard environment samples are trackable", () => {
   for (const mode of ["production", "test", "emulator"]) {
     const relativePath = `config/environments/.env.${mode}.example`;
-    const result = spawnSync(
-      "git",
-      ["check-ignore", "--quiet", "--no-index", relativePath],
-      { cwd: repositoryRoot },
-    );
+    const result = spawnSync("git", ["check-ignore", "--quiet", "--no-index", relativePath], {
+      cwd: repositoryRoot,
+    });
     assert.equal(result.status, 1, `${relativePath} must not be ignored`);
   }
 });
 
 for (const mode of ["production", "test", "emulator"]) {
-  test(`loads the ${mode} template with Vite mode semantics`, () => {
-    const samplePath = path.join(
-      environmentDirectory,
-      `.env.${mode}.example`,
-    );
+  test(`loads the ${mode} public web template with Vite mode semantics`, () => {
+    const samplePath = path.join(environmentDirectory, `.env.${mode}.example`);
     assert.ok(fs.existsSync(samplePath), `Missing environment sample: ${samplePath}`);
 
-    const temporaryEnvironmentDirectory = fs.mkdtempSync(
-      path.join(os.tmpdir(), `vite-env-${mode}-`),
-    );
+    const temporaryEnvironmentDirectory = fs.mkdtempSync(path.join(os.tmpdir(), `vite-env-${mode}-`));
     try {
-      fs.copyFileSync(
-        samplePath,
-        path.join(temporaryEnvironmentDirectory, `.env.${mode}.local`),
-      );
-
-      const portalEnvironment = loadEnv(
-        mode,
-        temporaryEnvironmentDirectory,
-        "PORTAL_",
-      );
-      const completeEnvironment = loadEnv(
-        mode,
-        temporaryEnvironmentDirectory,
-        "",
-      );
-
+      fs.copyFileSync(samplePath, path.join(temporaryEnvironmentDirectory, `.env.${mode}.local`));
+      const portalEnvironment = loadEnv(mode, temporaryEnvironmentDirectory, "PORTAL_");
       assert.equal(portalEnvironment.PORTAL_DEPLOY_ENV, mode);
       assert.ok(portalEnvironment.PORTAL_PUBLIC_BASE_PATH);
       assert.equal(
-        Object.keys(portalEnvironment).some((key) => key.startsWith("PLUGIN_")),
+        Object.keys(portalEnvironment).some((key) => /FUNCTIONS|PLUGIN_|SECRET|SCHEDULER/i.test(key)),
         false,
       );
-      assert.equal(completeEnvironment.PLUGIN_DEPLOY_ENV, mode);
     } finally {
-      fs.rmSync(temporaryEnvironmentDirectory, {
-        recursive: true,
-        force: true,
-      });
+      fs.rmSync(temporaryEnvironmentDirectory, { recursive: true, force: true });
     }
   });
 }
 
-test("web configuration exposes only portal and explicitly public plugin values", async () => {
+test("web configuration exposes only public portal values", async () => {
   const loadedConfig = await loadConfigFromFile(
     { command: "build", mode: "production" },
     path.join(repositoryRoot, "web", "vite.config.ts"),
     repositoryRoot,
   );
   assert.ok(loadedConfig);
-  assert.deepEqual(loadedConfig.config.envPrefix, ["PORTAL_", "VITE_PLUGIN_"]);
+  assert.equal(loadedConfig.config.envPrefix, "PORTAL_");
   for (const mode of ["production", "test", "emulator"]) {
-    const sample = fs.readFileSync(
-      path.join(environmentDirectory, `.env.${mode}.example`),
-      "utf8",
-    );
-    assert.match(sample, /^VITE_PLUGIN_AUTH_BASE_URL=/m);
-    assert.doesNotMatch(
-      sample,
-      /PLUGIN_(?:OAUTH_CLIENT_SECRET|CREDENTIAL_PEPPER|PRINCIPAL_KEY_PEPPER|LEASE_SIGNING_KEYS)/,
-    );
+    const sample = fs.readFileSync(path.join(environmentDirectory, `.env.${mode}.example`), "utf8");
+    assert.doesNotMatch(sample, /FUNCTIONS|PLUGIN_|SECRET|SCHEDULER/i);
   }
 });
 
 test("repository commands document explicit Vite modes", () => {
-  const rootPackage = JSON.parse(
-    fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8"),
-  );
-  const documentation = fs.readFileSync(
-    path.join(repositoryRoot, "docs", "environment.md"),
-    "utf8",
-  );
+  const rootPackage = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8"));
+  const documentation = fs.readFileSync(path.join(repositoryRoot, "docs", "environment.md"), "utf8");
 
   assert.match(rootPackage.scripts["build:web"], /-- --mode production$/);
   for (const mode of ["production", "test", "emulator"]) {

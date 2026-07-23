@@ -1,18 +1,15 @@
 # Error redaction contract
 
-Events may include only this bounded `error` object:
+The plugin may report a sanitized error record for a failed operation. The complete UTF-8 encoded error payload, including the traceback or stack, must not exceed 8 KiB after redaction. When truncation is required, preserve the beginning of the exception and append a stable truncation marker inside the same limit.
 
-- `error_category`: one value from the schema enum.
-- `summary`: a redacted, single-line summary of at most 512 characters.
-- `call_site`: a stable lowercase symbolic producer location such as `asset_exporter.run`; paths, filenames, line numbers, and stack frames are invalid.
-- `fingerprint`: a lowercase SHA-256-shaped fingerprint of a normalized error signature.
+Before an error leaves the workstation, replace or remove:
 
-The event's existing schema, registry, plugin, UE, UI, session, operation, binding, and principal fields provide version and correlation context. Do not duplicate them inside the error object.
+- Windows, UNC, Unix, Unreal package, and user absolute paths;
+- access tokens, refresh tokens, authorization headers, cookies, credentials, passwords, private keys, and API keys;
+- request body and response body content;
+- email addresses or account identifiers duplicated from the authenticated event owner;
+- arbitrary asset payloads, source excerpts, memory addresses, and other volatile values.
 
-Never send or store a full traceback, stack frame, exception object, absolute path, user directory, network path, asset payload, source excerpt, access token, refresh token, authorization header, cookie, credential, email address, or arbitrary diagnostic field. Authorization, Bearer, and Cookie detection is ASCII case-insensitive. Bare JWT-shaped credentials with three bounded base64url segments are rejected even when no `Bearer` label is present. A Python frame shaped like `File "...", line N[, in symbol]` is rejected even when the summary omits the `Traceback` heading. Credential detection is structural rather than a fixed label list: an optionally quoted key whose underscore, hyphen, or camel-case name ends in a sensitive suffix (`token`, `secret`, `password`, `passwd`, `credential`, `apiKey` / `api_key` / `api-key`, or `privateKey` / `private_key` / `private-key`) is rejected only when it is followed by a `:` or `=` marker and a nonempty quoted or unquoted value. Key and suffix matching is ASCII case-insensitive. This covers namespaced keys such as `oauth_token`, `session_token`, and `oauth_client_secret`, as well as JSON fragments such as `{"access_token":"..."}`. A normal message that merely contains a credential word, such as `Token refresh failed`, is not rejected automatically, and an explicitly empty quoted value is not treated as a leaked value. Replace sensitive values with stable type markers before forming the summary. Windows, UNC, Unix, and Unreal package paths become `<path>`; stack frames become `<stack>`; common Unreal asset identifiers such as `SM_*`, `SK_*`, `T_*`, `M_*`, `MI_*`, and `BP_*` become `<asset>`; email, JWT, other credential, and volatile address values use their corresponding stable markers.
+The stored record may contain a bounded category, sanitized summary, sanitized traceback or stack, stable call site, and deterministic fingerprint. User UID, tool key, action key, plugin version, result, and event time belong in their defined top-level fields rather than being copied into free-form error text.
 
-Producer and server use the same v2 fingerprint input: `SHA-256("tl-art-error-v2" + NUL + error_category + NUL + normalized_summary + NUL + call_site)`. The producer sends that fingerprint, and ingestion rejects rather than silently replacing a mismatch. Category, normalized redacted summary, and bounded symbolic call site all participate; asset identity, paths, tokens, accounts, numeric values, and volatile addresses do not create high-cardinality groups.
-
-The fingerprint intentionally remains stable across plugin versions, while storage and reporting add `plugin_version` as a separate bounded aggregate dimension. A version-filtered report must select the version shard before merging counts, timestamps, distinct principals, or summaries.
-
-Schema rejection is the final guard, not the primary sanitizer. Producers must redact before transmission; ingestion must independently validate and route rejected records to bounded server-side dead-letter metadata without preserving the rejected sensitive payload.
+Sanitization is required before local queue persistence and must be repeated before upload. Records that still match a sensitive-value pattern are rejected locally rather than sent unchanged. The browser must render error text as plain text and must never interpret it as HTML.
